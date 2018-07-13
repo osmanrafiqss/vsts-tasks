@@ -34,10 +34,10 @@ export class JavaFilesExtractor {
             const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, ''); // double-up single quotes, remove double quotes and newlines
             const escapedDest = destinationFolder.replace(/'/g, "''").replace(/"|\n|\r/g, '');
             const command: string = `$ErrorActionPreference = 'Stop' ; try { Add-Type -AssemblyName System.IO.Compression.FileSystem } catch { } ; [System.IO.Compression.ZipFile]::ExtractToDirectory('${escapedFile}', '${escapedDest}')`;
-    
+	
             // change the console output code page to UTF-8.
             const chcpPath = path.join(process.env.windir, "system32", "chcp.com");
-            await taskLib.exec(chcpPath, '65001');
+			await taskLib.exec(chcpPath, '65001');
     
             // run powershell
             const powershell: tr.ToolRunner = taskLib.tool('powershell')
@@ -70,7 +70,7 @@ export class JavaFilesExtractor {
         tr.exec();
     }
 
-    private extractFiles(file: string, fileEnding: string) {
+    private async extractFiles(file: string, fileEnding: string) {
         const stats = taskLib.stats(file);
         if (!stats) {
             throw new Error(taskLib.loc('ExtractNonExistFile', file));
@@ -104,7 +104,7 @@ export class JavaFilesExtractor {
                 console.log(taskLib.loc('RemoveTempDir', tempFolder));
                 taskLib.rmRF(tempFolder);
             } else if ('.zip' === fileEnding) {
-                this.unzipExtract(file, this.destinationFolder);
+                await this.unzipExtract(file, this.destinationFolder);
             } else { // use sevenZip
                 this.sevenZipExtract(file, this.destinationFolder);
             }
@@ -139,7 +139,7 @@ export class JavaFilesExtractor {
         }    
     }
 
-    public unzipJavaDownload(repoRoot: string, fileEnding: string, extractLocation: string): string {
+    public async unzipJavaDownload(repoRoot: string, fileEnding: string, extractLocation: string): Promise<string> {
         this.destinationFolder = extractLocation;
         let initialDirectoriesList: string[];
         let finalDirectoriesList: string[];
@@ -156,7 +156,7 @@ export class JavaFilesExtractor {
         const jdkFile = path.normalize(repoRoot);
         const stats = taskLib.stats(jdkFile);
         if (stats.isFile()) {
-            this.extractFiles(jdkFile, fileEnding);
+            await this.extractFiles(jdkFile, fileEnding)
             finalDirectoriesList = taskLib.find(this.destinationFolder).filter(x => taskLib.stats(x).isDirectory());
             taskLib.setResult(taskLib.TaskResult.Succeeded, taskLib.loc('SucceedMsg'));
             jdkDirectory = finalDirectoriesList.filter(dir => initialDirectoriesList.indexOf(dir) < 0)[0];
